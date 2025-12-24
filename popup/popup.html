@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Random Redirect</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>Random Redirect</h1>
+      <div id="status" class="status status-active">Active</div>
+    </header>
+
+    <!-- Snooze Section -->
+    <section class="snooze-section">
+      <div id="snooze-controls">
+        <select id="snooze-duration">
+          <option value="5">5 minutes</option>
+          <option value="15">15 minutes</option>
+          <option value="30" selected>30 minutes</option>
+          <option value="60">1 hour</option>
+        </select>
+        <button id="snooze-btn" class="btn btn-snooze">Snooze</button>
+      </div>
+      <div id="snooze-active" class="snooze-active hidden">
+        <span>Snoozed for <span id="snooze-remaining"></span></span>
+        <button id="cancel-snooze-btn" class="btn btn-small">Cancel</button>
+      </div>
+    </section>
+
+    <!-- Trigger Sites Section -->
+    <section class="section">
+      <h2>Trigger Sites</h2>
+      <p class="hint">Sites that will be redirected (paths supported)</p>
+      <div class="input-group">
+        <input type="text" id="trigger-input" placeholder="e.g., youtube.com or substack.com/inbox">
+        <button id="add-trigger-btn" class="btn btn-add">Add</button>
+      </div>
+      <ul id="trigger-list" class="item-list"></ul>
+    </section>
+
+    <!-- Destinations Section -->
+    <section class="section">
+      <h2>Destinations</h2>
+      <p class="hint">Sites to redirect to (randomly selected)</p>
+      <div class="input-group">
+        <input type="text" id="destination-input" placeholder="e.g., mathacademy.com">
+        <button id="add-destination-btn" class="btn btn-add">Add</button>
+      </div>
+      <ul id="destination-list" class="item-list"></ul>
+    </section>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>

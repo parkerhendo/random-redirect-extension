@@ -1,0 +1,118 @@
+// Default settings
+const DEFAULT_SETTINGS = {
+  triggerSites: [],
+  destinations: [],
+  snoozeUntil: null
+};
+
+// Parse a URL into hostname and path
+function parseUrl(url) {
+  try {
+    const parsed = new URL(url);
+    const hostname = parsed.hostname.replace(/^www\./, '');
+    const path = parsed.pathname;
+    return { hostname, path };
+  } catch {
+    return null;
+  }
+}
+
+// Parse a trigger string into hostname and optional path
+function parseTrigger(trigger) {
+  const normalized = trigger.replace(/^www\./, '');
+  const slashIndex = normalized.indexOf('/');
+  if (slashIndex === -1) {
+    return { hostname: normalized, path: null };
+  }
+  return {
+    hostname: normalized.substring(0, slashIndex),
+    path: normalized.substring(slashIndex)
+  };
+}
+
+// Check if a URL matches any trigger site
+function isTriggerSite(url, triggerSites) {
+  const parsed = parseUrl(url);
+  if (!parsed) return false;
+
+  return triggerSites.some(trigger => {
+    const triggerParsed = parseTrigger(trigger);
+
+    // Check hostname match (exact or subdomain)
+    const hostnameMatches =
+      parsed.hostname === triggerParsed.hostname ||
+      parsed.hostname.endsWith('.' + triggerParsed.hostname);
+
+    if (!hostnameMatches) return false;
+
+    // If trigger has no path, match any path on this domain
+    if (!triggerParsed.path) return true;
+
+    // If trigger has a path, URL must start with that path
+    return parsed.path.startsWith(triggerParsed.path);
+  });
+}
+
+// Check if snooze is active
+function isSnoozed(snoozeUntil) {
+  if (!snoozeUntil) return false;
+  return Date.now() < snoozeUntil;
+}
+
+// Get random destination from list
+function getRandomDestination(destinations) {
+  if (!destinations || destinations.length === 0) return null;
+  const index = Math.floor(Math.random() * destinations.length);
+  return destinations[index];
+}
+
+// Format destination as full URL
+function formatDestinationUrl(destination) {
+  if (!destination.startsWith('http://') && !destination.startsWith('https://')) {
+    return 'https://' + destination;
+  }
+  return destination;
+}
+
+// Track tabs we've already redirected to prevent loops
+const redirectedTabs = new Set();
+
+// Listen for navigation events
+chrome.webNavigation.onBeforeNavigate.addListener(async (details) => {
+  // Only handle main frame navigation
+  if (details.frameId !== 0) return;
+
+  // Skip if we just redirected this tab
+  if (redirectedTabs.has(details.tabId)) {
+    redirectedTabs.delete(details.tabId);
+    return;
+  }
+
+  // Get settings
+  const settings = await chrome.storage.sync.get(DEFAULT_SETTINGS);
+
+  // Check if snoozed
+  if (isSnoozed(settings.snoozeUntil)) return;
+
+  // Check if this is a trigger site
+  if (!isTriggerSite(details.url, settings.triggerSites)) return;
+
+  // Get random destination
+  const destination = getRandomDestination(settings.destinations);
+  if (!destination) return;
+
+  // Mark tab as redirected
+  redirectedTabs.add(details.tabId);
+
+  // Redirect
+  const destinationUrl = formatDestinationUrl(destination);
+  chrome.tabs.update(details.tabId, { url: destinationUrl });
+});
+
+// Clean up snooze if expired (on extension wake)
+chrome.runtime.onStartup.addListener(async () => {
+  const settings = await chrome.storage.sync.get(DEFAULT_SETTINGS);
+  if (settings.snoozeUntil && Date.now() >= settings.snoozeUntil) {
+    await chrome.storage.sync.set({ snoozeUntil: null });
+  }
+});
