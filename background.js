@@ -2,6 +2,7 @@
 const DEFAULT_SETTINGS = {
   triggerSites: [],
   destinations: [],
+  whitelist: [],
   snoozeUntil: null,
   snoozeBlockSchedules: []
 };
@@ -51,6 +52,24 @@ function isTriggerSite(url, triggerSites) {
 
     // If trigger has a path, URL must start with that path
     return parsed.path.startsWith(triggerParsed.path);
+  });
+}
+
+// Check if URL is whitelisted
+function isWhitelisted(url, whitelist) {
+  if (!whitelist?.length) return false;
+  const parsed = parseUrl(url);
+  if (!parsed) return false;
+
+  return whitelist.some(entry => {
+    const entryParsed = parseTrigger(entry);
+    const hostnameMatches =
+      parsed.hostname === entryParsed.hostname ||
+      parsed.hostname.endsWith('.' + entryParsed.hostname);
+
+    if (!hostnameMatches) return false;
+    if (!entryParsed.path) return true;
+    return parsed.path.startsWith(entryParsed.path);
   });
 }
 
@@ -115,6 +134,9 @@ chrome.webNavigation.onBeforeNavigate.addListener(async (details) => {
 
   // Check if this is a trigger site
   if (!isTriggerSite(details.url, settings.triggerSites)) return;
+
+  // Check if whitelisted
+  if (isWhitelisted(details.url, settings.whitelist)) return;
 
   // Get random destination
   const destination = getRandomDestination(settings.destinations);

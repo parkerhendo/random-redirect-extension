@@ -25,11 +25,15 @@ const menuDropdown = document.getElementById('menu-dropdown');
 const menuSchedules = document.getElementById('menu-schedules');
 const schedulesModal = document.getElementById('schedules-modal');
 const closeModal = document.getElementById('close-modal');
+const whitelistInput = document.getElementById('whitelist-input');
+const addWhitelistBtn = document.getElementById('add-whitelist-btn');
+const whitelistList = document.getElementById('whitelist-list');
 
 // State
 let settings = {
   triggerSites: [],
   destinations: [],
+  whitelist: [],
   snoozeUntil: null,
   snoozeBlockSchedules: []
 };
@@ -41,6 +45,7 @@ async function loadSettings() {
   const stored = await chrome.storage.sync.get({
     triggerSites: [],
     destinations: [],
+    whitelist: [],
     snoozeUntil: null,
     snoozeBlockSchedules: []
   });
@@ -159,6 +164,7 @@ function render() {
   updateSnoozeDisplay();
   renderList(triggerList, settings.triggerSites, removeTrigger);
   renderList(destinationList, settings.destinations, removeDestination);
+  renderList(whitelistList, settings.whitelist, removeWhitelist);
   renderSchedules();
 }
 
@@ -214,6 +220,26 @@ async function addDestination() {
 // Remove destination
 async function removeDestination(index) {
   settings.destinations.splice(index, 1);
+  await saveSettings();
+  render();
+}
+
+// Add whitelist entry
+async function addWhitelist() {
+  const site = normalizeSite(whitelistInput.value, true);  // preserve path
+  if (!site) return;
+
+  if (!settings.whitelist.includes(site)) {
+    settings.whitelist.push(site);
+    await saveSettings();
+    render();
+  }
+  whitelistInput.value = '';
+}
+
+// Remove whitelist entry
+async function removeWhitelist(index) {
+  settings.whitelist.splice(index, 1);
   await saveSettings();
   render();
 }
@@ -314,6 +340,11 @@ triggerInput.addEventListener('keypress', (e) => {
 addDestinationBtn.addEventListener('click', addDestination);
 destinationInput.addEventListener('keypress', (e) => {
   if (e.key === 'Enter') addDestination();
+});
+
+addWhitelistBtn.addEventListener('click', addWhitelist);
+whitelistInput.addEventListener('keypress', (e) => {
+  if (e.key === 'Enter') addWhitelist();
 });
 
 // Toggle schedule form visibility
