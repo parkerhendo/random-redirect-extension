@@ -41,8 +41,13 @@ let settings = {
   whitelist: [],
   snoozeUntil: null,
   snoozeBlockSchedules: [],
-  redirectStats: {}
+  redirectStats: {},
+  triggerCategories: {},
+  destinationCategories: {}
 };
+
+// Predefined categories
+const CATEGORIES = ['social', 'news', 'video', 'shopping', 'work', 'learning'];
 
 let snoozeInterval = null;
 
@@ -54,7 +59,9 @@ async function loadSettings() {
     whitelist: [],
     snoozeUntil: null,
     snoozeBlockSchedules: [],
-    redirectStats: {}
+    redirectStats: {},
+    triggerCategories: {},
+    destinationCategories: {}
   });
   settings = stored;
   render();
@@ -166,13 +173,69 @@ function renderList(listEl, items, onRemove) {
   });
 }
 
+// Render list with category support
+function renderListWithCategories(listEl, items, categoryMap, onRemove, onCategoryChange) {
+  listEl.innerHTML = '';
+
+  if (items.length === 0) {
+    const emptyEl = document.createElement('li');
+    emptyEl.className = 'empty-message';
+    emptyEl.textContent = 'No items added yet';
+    listEl.appendChild(emptyEl);
+    return;
+  }
+
+  items.forEach((item, index) => {
+    const li = document.createElement('li');
+    li.className = 'item-with-category';
+    const currentCat = categoryMap[item] || '';
+    const options = CATEGORIES.map(c =>
+      `<option value="${c}" ${currentCat === c ? 'selected' : ''}>${c}</option>`
+    ).join('');
+
+    li.innerHTML = `
+      <span class="item-name">${item}</span>
+      <select class="category-select" data-item="${item}">
+        <option value="">—</option>
+        ${options}
+      </select>
+      <button class="remove-btn" data-index="${index}">&times;</button>
+    `;
+    li.querySelector('.remove-btn').addEventListener('click', () => onRemove(index));
+    li.querySelector('.category-select').addEventListener('change', (e) => {
+      onCategoryChange(item, e.target.value);
+    });
+    listEl.appendChild(li);
+  });
+}
+
 // Main render function
 function render() {
   updateSnoozeDisplay();
-  renderList(triggerList, settings.triggerSites, removeTrigger);
-  renderList(destinationList, settings.destinations, removeDestination);
+  renderListWithCategories(triggerList, settings.triggerSites, settings.triggerCategories, removeTrigger, setTriggerCategory);
+  renderListWithCategories(destinationList, settings.destinations, settings.destinationCategories, removeDestination, setDestinationCategory);
   renderList(whitelistList, settings.whitelist, removeWhitelist);
   renderSchedules();
+}
+
+// Set trigger category
+async function setTriggerCategory(site, category) {
+  if (category) {
+    settings.triggerCategories[site] = category;
+  } else {
+    delete settings.triggerCategories[site];
+  }
+  await saveSettings();
+}
+
+// Set destination category
+async function setDestinationCategory(site, category) {
+  if (category) {
+    settings.destinationCategories[site] = category;
+  } else {
+    delete settings.destinationCategories[site];
+  }
+  await saveSettings();
 }
 
 // Normalize site input (remove protocol, www prefix, trailing slashes)
@@ -206,7 +269,9 @@ async function addTrigger() {
 
 // Remove trigger site
 async function removeTrigger(index) {
+  const site = settings.triggerSites[index];
   settings.triggerSites.splice(index, 1);
+  delete settings.triggerCategories[site];
   await saveSettings();
   render();
 }
@@ -226,7 +291,9 @@ async function addDestination() {
 
 // Remove destination
 async function removeDestination(index) {
+  const site = settings.destinations[index];
   settings.destinations.splice(index, 1);
+  delete settings.destinationCategories[site];
   await saveSettings();
   render();
 }

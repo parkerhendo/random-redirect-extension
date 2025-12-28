@@ -5,7 +5,9 @@ const DEFAULT_SETTINGS = {
   whitelist: [],
   snoozeUntil: null,
   snoozeBlockSchedules: [],
-  redirectStats: {}  // { "site.com": count }
+  redirectStats: {},  // { "site.com": count }
+  triggerCategories: {},  // { "site.com": "social" }
+  destinationCategories: {}  // { "site.com": "learning" }
 };
 
 // Parse a URL into hostname and path
@@ -103,11 +105,19 @@ function isSnoozeBlocked(schedules) {
   });
 }
 
-// Get random destination from list
-function getRandomDestination(destinations) {
+// Get random destination from list, optionally filtered by category
+function getRandomDestination(destinations, category = null, destinationCategories = {}) {
   if (!destinations || destinations.length === 0) return null;
-  const index = Math.floor(Math.random() * destinations.length);
-  return destinations[index];
+
+  let filtered = destinations;
+  if (category) {
+    filtered = destinations.filter(d => destinationCategories[d] === category);
+    // Fallback to all destinations if no matches
+    if (filtered.length === 0) filtered = destinations;
+  }
+
+  const index = Math.floor(Math.random() * filtered.length);
+  return filtered[index];
 }
 
 // Format destination as full URL
@@ -145,8 +155,15 @@ chrome.webNavigation.onBeforeNavigate.addListener(async (details) => {
   // Check if whitelisted
   if (isWhitelisted(details.url, settings.whitelist)) return;
 
-  // Get random destination
-  const destination = getRandomDestination(settings.destinations);
+  // Get category of trigger site
+  const triggerCategory = settings.triggerCategories?.[matchedTrigger] || null;
+
+  // Get random destination (filtered by category if set)
+  const destination = getRandomDestination(
+    settings.destinations,
+    triggerCategory,
+    settings.destinationCategories || {}
+  );
   if (!destination) return;
 
   // Mark tab as redirected
