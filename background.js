@@ -7,7 +7,8 @@ const DEFAULT_SETTINGS = {
   snoozeBlockSchedules: [],
   redirectStats: {},  // { "site.com": count }
   triggerCategories: {},  // { "site.com": "social" }
-  destinationCategories: {}  // { "site.com": "learning" }
+  destinationCategories: {},  // { "site.com": "learning" }
+  snoozedSites: {}  // { "site.com": timestamp }
 };
 
 // Parse a URL into hostname and path
@@ -154,6 +155,10 @@ chrome.webNavigation.onBeforeNavigate.addListener(async (details) => {
 
   // Check if whitelisted
   if (isWhitelisted(details.url, settings.whitelist)) return;
+
+  // Check if this specific site is snoozed
+  const siteSnoozedUntil = settings.snoozedSites?.[matchedTrigger];
+  if (siteSnoozedUntil && Date.now() < siteSnoozedUntil) return;
 
   // Get category of trigger site
   const triggerCategory = settings.triggerCategories?.[matchedTrigger] || null;

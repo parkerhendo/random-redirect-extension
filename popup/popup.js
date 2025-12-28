@@ -43,7 +43,8 @@ let settings = {
   snoozeBlockSchedules: [],
   redirectStats: {},
   triggerCategories: {},
-  destinationCategories: {}
+  destinationCategories: {},
+  snoozedSites: {}
 };
 
 // Predefined categories
@@ -61,7 +62,8 @@ async function loadSettings() {
     snoozeBlockSchedules: [],
     redirectStats: {},
     triggerCategories: {},
-    destinationCategories: {}
+    destinationCategories: {},
+    snoozedSites: {}
   });
   settings = stored;
   render();
@@ -209,10 +211,66 @@ function renderListWithCategories(listEl, items, categoryMap, onRemove, onCatego
   });
 }
 
+// Render trigger list with category and per-site snooze
+function renderTriggerList() {
+  triggerList.innerHTML = '';
+
+  if (settings.triggerSites.length === 0) {
+    const emptyEl = document.createElement('li');
+    emptyEl.className = 'empty-message';
+    emptyEl.textContent = 'No items added yet';
+    triggerList.appendChild(emptyEl);
+    return;
+  }
+
+  settings.triggerSites.forEach((item, index) => {
+    const li = document.createElement('li');
+    li.className = 'item-with-category';
+    const currentCat = settings.triggerCategories[item] || '';
+    const options = CATEGORIES.map(c =>
+      `<option value="${c}" ${currentCat === c ? 'selected' : ''}>${c}</option>`
+    ).join('');
+
+    const snoozedUntil = settings.snoozedSites[item];
+    const isSnoozed = snoozedUntil && Date.now() < snoozedUntil;
+    const snoozeLabel = isSnoozed ? formatRemainingTime(snoozedUntil - Date.now()) : '💤';
+
+    li.innerHTML = `
+      <span class="item-name">${item}</span>
+      <button class="site-snooze-btn ${isSnoozed ? 'snoozed' : ''}" data-site="${item}" title="${isSnoozed ? 'Cancel snooze' : 'Snooze 30min'}">${snoozeLabel}</button>
+      <select class="category-select" data-item="${item}">
+        <option value="">—</option>
+        ${options}
+      </select>
+      <button class="remove-btn" data-index="${index}">&times;</button>
+    `;
+    li.querySelector('.remove-btn').addEventListener('click', () => removeTrigger(index));
+    li.querySelector('.category-select').addEventListener('change', (e) => {
+      setTriggerCategory(item, e.target.value);
+    });
+    li.querySelector('.site-snooze-btn').addEventListener('click', () => {
+      toggleSiteSnooze(item);
+    });
+    triggerList.appendChild(li);
+  });
+}
+
+// Toggle per-site snooze
+async function toggleSiteSnooze(site) {
+  const snoozedUntil = settings.snoozedSites[site];
+  if (snoozedUntil && Date.now() < snoozedUntil) {
+    delete settings.snoozedSites[site];
+  } else {
+    settings.snoozedSites[site] = Date.now() + (30 * 60 * 1000); // 30 min
+  }
+  await saveSettings();
+  render();
+}
+
 // Main render function
 function render() {
   updateSnoozeDisplay();
-  renderListWithCategories(triggerList, settings.triggerSites, settings.triggerCategories, removeTrigger, setTriggerCategory);
+  renderTriggerList();
   renderListWithCategories(destinationList, settings.destinations, settings.destinationCategories, removeDestination, setDestinationCategory);
   renderList(whitelistList, settings.whitelist, removeWhitelist);
   renderSchedules();
