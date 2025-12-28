@@ -10,7 +10,15 @@
   <div class="container">
     <header>
       <h1>Random Redirect</h1>
-      <div id="status" class="status status-active">Active</div>
+      <div class="header-right">
+        <div id="status" class="status status-active">Active</div>
+        <div class="menu-container">
+          <button id="menu-btn" class="menu-btn">⋮</button>
+          <div id="menu-dropdown" class="menu-dropdown hidden">
+            <button id="menu-schedules">Snooze block schedules</button>
+          </div>
+        </div>
+      </div>
     </header>
 
     <!-- Snooze Section -->
@@ -27,6 +35,9 @@
       <div id="snooze-active" class="snooze-active hidden">
         <span>Snoozed for <span id="snooze-remaining"></span></span>
         <button id="cancel-snooze-btn" class="btn btn-small">Cancel</button>
+      </div>
+      <div id="snooze-blocked" class="snooze-blocked hidden">
+        Snooze blocked by schedule
       </div>
     </section>
 
@@ -51,6 +62,41 @@
       </div>
       <ul id="destination-list" class="item-list"></ul>
     </section>
+  </div>
+
+  <!-- Schedules Modal -->
+  <div id="schedules-modal" class="modal hidden">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2>Snooze block schedules</h2>
+        <button id="close-modal" class="modal-close">&times;</button>
+      </div>
+      <p class="hint">Snoozing disabled during these times</p>
+
+      <div class="schedule-form-toggle">
+        <button id="toggle-schedule-form" class="btn btn-small">Add new</button>
+      </div>
+
+      <div id="schedule-form" class="schedule-input hidden">
+        <div class="schedule-days">
+          <button type="button" class="schedule-day-btn" data-day="0">S</button>
+          <button type="button" class="schedule-day-btn" data-day="1">M</button>
+          <button type="button" class="schedule-day-btn" data-day="2">T</button>
+          <button type="button" class="schedule-day-btn" data-day="3">W</button>
+          <button type="button" class="schedule-day-btn" data-day="4">T</button>
+          <button type="button" class="schedule-day-btn" data-day="5">F</button>
+          <button type="button" class="schedule-day-btn" data-day="6">S</button>
+        </div>
+        <div class="schedule-times">
+          <input type="time" id="schedule-start">
+          <span>to</span>
+          <input type="time" id="schedule-end">
+        </div>
+        <button id="add-schedule-btn" class="btn btn-add">Save</button>
+      </div>
+
+      <ul id="schedule-list" class="item-list"></ul>
+    </div>
   </div>
 
   <script src="popup.js"></script>

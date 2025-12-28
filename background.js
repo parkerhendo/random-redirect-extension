@@ -2,7 +2,8 @@
 const DEFAULT_SETTINGS = {
   triggerSites: [],
   destinations: [],
-  snoozeUntil: null
+  snoozeUntil: null,
+  snoozeBlockSchedules: []
 };
 
 // Parse a URL into hostname and path
@@ -59,6 +60,24 @@ function isSnoozed(snoozeUntil) {
   return Date.now() < snoozeUntil;
 }
 
+// Check if snooze is blocked by schedule
+function isSnoozeBlocked(schedules) {
+  if (!schedules?.length) return false;
+  const now = new Date();
+  const day = now.getDay();
+  const mins = now.getHours() * 60 + now.getMinutes();
+
+  return schedules.some(s => {
+    if (!s.days.includes(day)) return false;
+    const [sh, sm] = s.startTime.split(':').map(Number);
+    const [eh, em] = s.endTime.split(':').map(Number);
+    const start = sh * 60 + sm, end = eh * 60 + em;
+
+    if (end <= start) return mins >= start || mins < end;
+    return mins >= start && mins < end;
+  });
+}
+
 // Get random destination from list
 function getRandomDestination(destinations) {
   if (!destinations || destinations.length === 0) return null;
@@ -91,8 +110,8 @@ chrome.webNavigation.onBeforeNavigate.addListener(async (details) => {
   // Get settings
   const settings = await chrome.storage.sync.get(DEFAULT_SETTINGS);
 
-  // Check if snoozed
-  if (isSnoozed(settings.snoozeUntil)) return;
+  // Check if snoozed (ignore snooze if blocked by schedule)
+  if (!isSnoozeBlocked(settings.snoozeBlockSchedules) && isSnoozed(settings.snoozeUntil)) return;
 
   // Check if this is a trigger site
   if (!isTriggerSite(details.url, settings.triggerSites)) return;

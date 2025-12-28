@@ -12,12 +12,26 @@ const triggerList = document.getElementById('trigger-list');
 const destinationInput = document.getElementById('destination-input');
 const addDestinationBtn = document.getElementById('add-destination-btn');
 const destinationList = document.getElementById('destination-list');
+const snoozeBlocked = document.getElementById('snooze-blocked');
+const scheduleDayBtns = document.querySelectorAll('.schedule-day-btn');
+const scheduleStart = document.getElementById('schedule-start');
+const scheduleEnd = document.getElementById('schedule-end');
+const addScheduleBtn = document.getElementById('add-schedule-btn');
+const scheduleList = document.getElementById('schedule-list');
+const toggleScheduleForm = document.getElementById('toggle-schedule-form');
+const scheduleForm = document.getElementById('schedule-form');
+const menuBtn = document.getElementById('menu-btn');
+const menuDropdown = document.getElementById('menu-dropdown');
+const menuSchedules = document.getElementById('menu-schedules');
+const schedulesModal = document.getElementById('schedules-modal');
+const closeModal = document.getElementById('close-modal');
 
 // State
 let settings = {
   triggerSites: [],
   destinations: [],
-  snoozeUntil: null
+  snoozeUntil: null,
+  snoozeBlockSchedules: []
 };
 
 let snoozeInterval = null;
@@ -27,7 +41,8 @@ async function loadSettings() {
   const stored = await chrome.storage.sync.get({
     triggerSites: [],
     destinations: [],
-    snoozeUntil: null
+    snoozeUntil: null,
+    snoozeBlockSchedules: []
   });
   settings = stored;
   render();
@@ -49,8 +64,40 @@ function formatRemainingTime(ms) {
   return `${minutes}m`;
 }
 
+// Check if snooze is blocked by schedule
+function isSnoozeBlocked(schedules) {
+  if (!schedules?.length) return false;
+  const now = new Date();
+  const day = now.getDay();
+  const mins = now.getHours() * 60 + now.getMinutes();
+
+  return schedules.some(s => {
+    if (!s.days.includes(day)) return false;
+    const [sh, sm] = s.startTime.split(':').map(Number);
+    const [eh, em] = s.endTime.split(':').map(Number);
+    const start = sh * 60 + sm, end = eh * 60 + em;
+
+    // overnight: e.g. 22:00-06:00 on same calendar day
+    if (end <= start) return mins >= start || mins < end;
+    return mins >= start && mins < end;
+  });
+}
+
 // Update snooze display
 function updateSnoozeDisplay() {
+  const blocked = isSnoozeBlocked(settings.snoozeBlockSchedules);
+
+  if (blocked) {
+    snoozeControls.classList.add('hidden');
+    snoozeActive.classList.add('hidden');
+    snoozeBlocked.classList.remove('hidden');
+    statusEl.textContent = 'Blocked';
+    statusEl.className = 'status status-blocked';
+    return;
+  }
+
+  snoozeBlocked.classList.add('hidden');
+
   if (settings.snoozeUntil && Date.now() < settings.snoozeUntil) {
     const remaining = settings.snoozeUntil - Date.now();
     snoozeRemaining.textContent = formatRemainingTime(remaining);
@@ -62,7 +109,9 @@ function updateSnoozeDisplay() {
     // Set up interval to update countdown
     if (!snoozeInterval) {
       snoozeInterval = setInterval(() => {
-        if (settings.snoozeUntil && Date.now() < settings.snoozeUntil) {
+        if (isSnoozeBlocked(settings.snoozeBlockSchedules)) {
+          render();
+        } else if (settings.snoozeUntil && Date.now() < settings.snoozeUntil) {
           snoozeRemaining.textContent = formatRemainingTime(settings.snoozeUntil - Date.now());
         } else {
           clearSnooze();
@@ -110,6 +159,7 @@ function render() {
   updateSnoozeDisplay();
   renderList(triggerList, settings.triggerSites, removeTrigger);
   renderList(destinationList, settings.destinations, removeDestination);
+  renderSchedules();
 }
 
 // Normalize site input (remove protocol, www prefix, trailing slashes)
@@ -183,6 +233,75 @@ async function clearSnooze() {
   render();
 }
 
+// Generate unique ID
+function generateId() {
+  return Date.now().toString(36) + Math.random().toString(36).substr(2);
+}
+
+// Render schedules
+function renderSchedules() {
+  scheduleList.innerHTML = '';
+
+  if (settings.snoozeBlockSchedules.length === 0) {
+    const emptyEl = document.createElement('li');
+    emptyEl.className = 'empty-message';
+    emptyEl.textContent = 'No schedules';
+    scheduleList.appendChild(emptyEl);
+    return;
+  }
+
+  const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
+  settings.snoozeBlockSchedules.forEach(schedule => {
+    const daysStr = schedule.days.map(d => dayNames[d]).join(', ');
+    const li = document.createElement('li');
+    li.innerHTML = `
+      <span>${daysStr} ${schedule.startTime}-${schedule.endTime}</span>
+      <button class="remove-btn" data-id="${schedule.id}">&times;</button>
+    `;
+    li.querySelector('.remove-btn').addEventListener('click', () => removeSchedule(schedule.id));
+    scheduleList.appendChild(li);
+  });
+}
+
+// Add schedule
+async function addSchedule() {
+  const selectedDays = [...document.querySelectorAll('.schedule-day-btn.selected')]
+    .map(btn => parseInt(btn.dataset.day));
+
+  if (selectedDays.length === 0) return;
+
+  const startTime = scheduleStart.value;
+  const endTime = scheduleEnd.value;
+  if (!startTime || !endTime) return;
+
+  settings.snoozeBlockSchedules.push({
+    id: generateId(),
+    days: selectedDays,
+    startTime,
+    endTime
+  });
+
+  await saveSettings();
+  render();
+  clearScheduleInputs();
+}
+
+// Remove schedule
+async function removeSchedule(id) {
+  settings.snoozeBlockSchedules = settings.snoozeBlockSchedules.filter(s => s.id !== id);
+  await saveSettings();
+  render();
+}
+
+// Clear schedule inputs and hide form
+function clearScheduleInputs() {
+  scheduleDayBtns.forEach(btn => btn.classList.remove('selected'));
+  scheduleStart.value = '';
+  scheduleEnd.value = '';
+  scheduleForm.classList.add('hidden');
+}
+
 // Event listeners
 snoozeBtn.addEventListener('click', startSnooze);
 cancelSnoozeBtn.addEventListener('click', clearSnooze);
@@ -195,6 +314,49 @@ triggerInput.addEventListener('keypress', (e) => {
 addDestinationBtn.addEventListener('click', addDestination);
 destinationInput.addEventListener('keypress', (e) => {
   if (e.key === 'Enter') addDestination();
+});
+
+// Toggle schedule form visibility
+toggleScheduleForm.addEventListener('click', () => {
+  scheduleForm.classList.toggle('hidden');
+});
+
+// Schedule day toggle
+scheduleDayBtns.forEach(btn => {
+  btn.addEventListener('click', () => btn.classList.toggle('selected'));
+});
+
+addScheduleBtn.addEventListener('click', addSchedule);
+
+// Menu toggle
+menuBtn.addEventListener('click', (e) => {
+  e.stopPropagation();
+  menuDropdown.classList.toggle('hidden');
+});
+
+// Close menu when clicking outside
+document.addEventListener('click', () => {
+  menuDropdown.classList.add('hidden');
+});
+
+// Show schedules modal
+menuSchedules.addEventListener('click', () => {
+  schedulesModal.classList.remove('hidden');
+  menuDropdown.classList.add('hidden');
+});
+
+// Close modal
+closeModal.addEventListener('click', () => {
+  schedulesModal.classList.add('hidden');
+  scheduleForm.classList.add('hidden');
+});
+
+// Close modal on backdrop click
+schedulesModal.addEventListener('click', (e) => {
+  if (e.target === schedulesModal) {
+    schedulesModal.classList.add('hidden');
+    scheduleForm.classList.add('hidden');
+  }
 });
 
 // Initialize
