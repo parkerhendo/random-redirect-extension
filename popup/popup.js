@@ -33,6 +33,7 @@ const statsModal = document.getElementById('stats-modal');
 const closeStatsModal = document.getElementById('close-stats-modal');
 const statsList = document.getElementById('stats-list');
 const clearStatsBtn = document.getElementById('clear-stats-btn');
+const focusModeToggle = document.getElementById('focus-mode-toggle');
 
 // State
 let settings = {
@@ -44,7 +45,8 @@ let settings = {
   redirectStats: {},
   triggerCategories: {},
   destinationCategories: {},
-  snoozedSites: {}
+  snoozedSites: {},
+  focusMode: false
 };
 
 // Predefined categories
@@ -63,7 +65,8 @@ async function loadSettings() {
     redirectStats: {},
     triggerCategories: {},
     destinationCategories: {},
-    snoozedSites: {}
+    snoozedSites: {},
+    focusMode: false
   });
   settings = stored;
   render();
@@ -108,6 +111,19 @@ function isSnoozeBlocked(schedules) {
 function updateSnoozeDisplay() {
   const blocked = isSnoozeBlocked(settings.snoozeBlockSchedules);
 
+  // Update focus mode toggle
+  focusModeToggle.checked = settings.focusMode;
+
+  // Focus mode status takes precedence
+  if (settings.focusMode) {
+    snoozeControls.classList.add('hidden');
+    snoozeActive.classList.add('hidden');
+    snoozeBlocked.classList.add('hidden');
+    statusEl.textContent = 'Focus';
+    statusEl.className = 'status status-focus';
+    return;
+  }
+
   if (blocked) {
     snoozeControls.classList.add('hidden');
     snoozeActive.classList.add('hidden');
@@ -150,6 +166,13 @@ function updateSnoozeDisplay() {
       snoozeInterval = null;
     }
   }
+}
+
+// Toggle focus mode
+async function toggleFocusMode() {
+  settings.focusMode = focusModeToggle.checked;
+  await saveSettings();
+  render();
 }
 
 // Render list items
@@ -557,6 +580,9 @@ statsModal.addEventListener('click', (e) => {
 
 // Clear stats
 clearStatsBtn.addEventListener('click', clearStats);
+
+// Focus mode toggle
+focusModeToggle.addEventListener('change', toggleFocusMode);
 
 // Close modal
 closeModal.addEventListener('click', () => {

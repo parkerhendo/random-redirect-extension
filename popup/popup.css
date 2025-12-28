@@ -105,6 +105,38 @@ h2 {
   color: #856404;
 }
 
+.status-focus {
+  background: #cce5ff;
+  color: #004085;
+}
+
+.focus-section {
+  margin-bottom: 12px;
+}
+
+.focus-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+}
+
+.focus-toggle input {
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+}
+
+.focus-label {
+  font-weight: 500;
+  font-size: 13px;
+}
+
+.focus-hint {
+  font-size: 11px;
+  color: #888;
+}
+
 .hint {
   font-size: 11px;
   color: #888;

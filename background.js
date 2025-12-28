@@ -8,7 +8,8 @@ const DEFAULT_SETTINGS = {
   redirectStats: {},  // { "site.com": count }
   triggerCategories: {},  // { "site.com": "social" }
   destinationCategories: {},  // { "site.com": "learning" }
-  snoozedSites: {}  // { "site.com": timestamp }
+  snoozedSites: {},  // { "site.com": timestamp }
+  focusMode: false  // when true, ignores all snoozes
 };
 
 // Parse a URL into hostname and path
@@ -146,8 +147,11 @@ chrome.webNavigation.onBeforeNavigate.addListener(async (details) => {
   // Get settings
   const settings = await chrome.storage.sync.get(DEFAULT_SETTINGS);
 
-  // Check if snoozed (ignore snooze if blocked by schedule)
-  if (!isSnoozeBlocked(settings.snoozeBlockSchedules) && isSnoozed(settings.snoozeUntil)) return;
+  // Focus mode ignores all snoozes
+  const focusActive = settings.focusMode;
+
+  // Check if snoozed (ignore snooze if blocked by schedule or focus mode)
+  if (!focusActive && !isSnoozeBlocked(settings.snoozeBlockSchedules) && isSnoozed(settings.snoozeUntil)) return;
 
   // Check if this is a trigger site
   const matchedTrigger = getMatchingTrigger(details.url, settings.triggerSites);
@@ -156,9 +160,11 @@ chrome.webNavigation.onBeforeNavigate.addListener(async (details) => {
   // Check if whitelisted
   if (isWhitelisted(details.url, settings.whitelist)) return;
 
-  // Check if this specific site is snoozed
-  const siteSnoozedUntil = settings.snoozedSites?.[matchedTrigger];
-  if (siteSnoozedUntil && Date.now() < siteSnoozedUntil) return;
+  // Check if this specific site is snoozed (ignored in focus mode)
+  if (!focusActive) {
+    const siteSnoozedUntil = settings.snoozedSites?.[matchedTrigger];
+    if (siteSnoozedUntil && Date.now() < siteSnoozedUntil) return;
+  }
 
   // Get category of trigger site
   const triggerCategory = settings.triggerCategories?.[matchedTrigger] || null;
