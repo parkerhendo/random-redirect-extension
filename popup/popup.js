@@ -28,6 +28,11 @@ const closeModal = document.getElementById('close-modal');
 const whitelistInput = document.getElementById('whitelist-input');
 const addWhitelistBtn = document.getElementById('add-whitelist-btn');
 const whitelistList = document.getElementById('whitelist-list');
+const menuStats = document.getElementById('menu-stats');
+const statsModal = document.getElementById('stats-modal');
+const closeStatsModal = document.getElementById('close-stats-modal');
+const statsList = document.getElementById('stats-list');
+const clearStatsBtn = document.getElementById('clear-stats-btn');
 
 // State
 let settings = {
@@ -35,7 +40,8 @@ let settings = {
   destinations: [],
   whitelist: [],
   snoozeUntil: null,
-  snoozeBlockSchedules: []
+  snoozeBlockSchedules: [],
+  redirectStats: {}
 };
 
 let snoozeInterval = null;
@@ -47,7 +53,8 @@ async function loadSettings() {
     destinations: [],
     whitelist: [],
     snoozeUntil: null,
-    snoozeBlockSchedules: []
+    snoozeBlockSchedules: [],
+    redirectStats: {}
   });
   settings = stored;
   render();
@@ -264,6 +271,34 @@ function generateId() {
   return Date.now().toString(36) + Math.random().toString(36).substr(2);
 }
 
+// Render stats
+function renderStats() {
+  statsList.innerHTML = '';
+  const stats = settings.redirectStats || {};
+  const entries = Object.entries(stats).sort((a, b) => b[1] - a[1]);
+
+  if (entries.length === 0) {
+    const emptyEl = document.createElement('li');
+    emptyEl.className = 'empty-message';
+    emptyEl.textContent = 'No redirects yet';
+    statsList.appendChild(emptyEl);
+    return;
+  }
+
+  entries.forEach(([site, count]) => {
+    const li = document.createElement('li');
+    li.innerHTML = `<span>${site}</span><span class="stat-count">${count}</span>`;
+    statsList.appendChild(li);
+  });
+}
+
+// Clear stats
+async function clearStats() {
+  settings.redirectStats = {};
+  await saveSettings();
+  renderStats();
+}
+
 // Render schedules
 function renderSchedules() {
   scheduleList.innerHTML = '';
@@ -375,6 +410,28 @@ menuSchedules.addEventListener('click', () => {
   schedulesModal.classList.remove('hidden');
   menuDropdown.classList.add('hidden');
 });
+
+// Show stats modal
+menuStats.addEventListener('click', () => {
+  renderStats();
+  statsModal.classList.remove('hidden');
+  menuDropdown.classList.add('hidden');
+});
+
+// Close stats modal
+closeStatsModal.addEventListener('click', () => {
+  statsModal.classList.add('hidden');
+});
+
+// Close stats modal on backdrop click
+statsModal.addEventListener('click', (e) => {
+  if (e.target === statsModal) {
+    statsModal.classList.add('hidden');
+  }
+});
+
+// Clear stats
+clearStatsBtn.addEventListener('click', clearStats);
 
 // Close modal
 closeModal.addEventListener('click', () => {

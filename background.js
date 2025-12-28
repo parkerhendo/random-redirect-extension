@@ -4,7 +4,8 @@ const DEFAULT_SETTINGS = {
   destinations: [],
   whitelist: [],
   snoozeUntil: null,
-  snoozeBlockSchedules: []
+  snoozeBlockSchedules: [],
+  redirectStats: {}  // { "site.com": count }
 };
 
 // Parse a URL into hostname and path
@@ -32,12 +33,12 @@ function parseTrigger(trigger) {
   };
 }
 
-// Check if a URL matches any trigger site
-function isTriggerSite(url, triggerSites) {
+// Check if a URL matches any trigger site, returns matching trigger or null
+function getMatchingTrigger(url, triggerSites) {
   const parsed = parseUrl(url);
-  if (!parsed) return false;
+  if (!parsed) return null;
 
-  return triggerSites.some(trigger => {
+  return triggerSites.find(trigger => {
     const triggerParsed = parseTrigger(trigger);
 
     // Check hostname match (exact or subdomain)
@@ -52,7 +53,12 @@ function isTriggerSite(url, triggerSites) {
 
     // If trigger has a path, URL must start with that path
     return parsed.path.startsWith(triggerParsed.path);
-  });
+  }) || null;
+}
+
+// Check if a URL matches any trigger site
+function isTriggerSite(url, triggerSites) {
+  return getMatchingTrigger(url, triggerSites) !== null;
 }
 
 // Check if URL is whitelisted
@@ -133,7 +139,8 @@ chrome.webNavigation.onBeforeNavigate.addListener(async (details) => {
   if (!isSnoozeBlocked(settings.snoozeBlockSchedules) && isSnoozed(settings.snoozeUntil)) return;
 
   // Check if this is a trigger site
-  if (!isTriggerSite(details.url, settings.triggerSites)) return;
+  const matchedTrigger = getMatchingTrigger(details.url, settings.triggerSites);
+  if (!matchedTrigger) return;
 
   // Check if whitelisted
   if (isWhitelisted(details.url, settings.whitelist)) return;
@@ -144,6 +151,11 @@ chrome.webNavigation.onBeforeNavigate.addListener(async (details) => {
 
   // Mark tab as redirected
   redirectedTabs.add(details.tabId);
+
+  // Update redirect stats
+  const stats = settings.redirectStats || {};
+  stats[matchedTrigger] = (stats[matchedTrigger] || 0) + 1;
+  chrome.storage.sync.set({ redirectStats: stats });
 
   // Redirect
   const destinationUrl = formatDestinationUrl(destination);

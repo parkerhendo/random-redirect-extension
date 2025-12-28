@@ -205,6 +205,20 @@ h2 {
   background: #545b62;
 }
 
+.btn-danger {
+  background: #dc3545;
+  margin-top: 12px;
+}
+
+.btn-danger:hover {
+  background: #c82333;
+}
+
+.stats-list .stat-count {
+  color: #007bff;
+  font-weight: 600;
+}
+
 .item-list {
   list-style: none;
   max-height: 120px;

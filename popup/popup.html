@@ -16,6 +16,7 @@
           <button id="menu-btn" class="menu-btn">⋮</button>
           <div id="menu-dropdown" class="menu-dropdown hidden">
             <button id="menu-schedules">Snooze block schedules</button>
+            <button id="menu-stats">Redirect stats</button>
           </div>
         </div>
       </div>
@@ -107,6 +108,19 @@
       </div>
 
       <ul id="schedule-list" class="item-list"></ul>
+    </div>
+  </div>
+
+  <!-- Stats Modal -->
+  <div id="stats-modal" class="modal hidden">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2>Redirect stats</h2>
+        <button id="close-stats-modal" class="modal-close">&times;</button>
+      </div>
+      <p class="hint">Times redirected per trigger site</p>
+      <ul id="stats-list" class="item-list stats-list"></ul>
+      <button id="clear-stats-btn" class="btn btn-small btn-danger">Clear stats</button>
     </div>
   </div>
 
