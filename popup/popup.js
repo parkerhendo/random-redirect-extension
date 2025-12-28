@@ -34,6 +34,7 @@ const closeStatsModal = document.getElementById('close-stats-modal');
 const statsList = document.getElementById('stats-list');
 const clearStatsBtn = document.getElementById('clear-stats-btn');
 const focusModeToggle = document.getElementById('focus-mode-toggle');
+const delaySelect = document.getElementById('delay-select');
 
 // State
 let settings = {
@@ -46,7 +47,8 @@ let settings = {
   triggerCategories: {},
   destinationCategories: {},
   snoozedSites: {},
-  focusMode: false
+  focusMode: false,
+  redirectDelay: 0
 };
 
 // Predefined categories
@@ -66,7 +68,8 @@ async function loadSettings() {
     triggerCategories: {},
     destinationCategories: {},
     snoozedSites: {},
-    focusMode: false
+    focusMode: false,
+    redirectDelay: 0
   });
   settings = stored;
   render();
@@ -113,6 +116,9 @@ function updateSnoozeDisplay() {
 
   // Update focus mode toggle
   focusModeToggle.checked = settings.focusMode;
+
+  // Update delay select
+  delaySelect.value = settings.redirectDelay.toString();
 
   // Focus mode status takes precedence
   if (settings.focusMode) {
@@ -173,6 +179,12 @@ async function toggleFocusMode() {
   settings.focusMode = focusModeToggle.checked;
   await saveSettings();
   render();
+}
+
+// Update redirect delay
+async function updateDelay() {
+  settings.redirectDelay = parseInt(delaySelect.value, 10);
+  await saveSettings();
 }
 
 // Render list items
@@ -583,6 +595,9 @@ clearStatsBtn.addEventListener('click', clearStats);
 
 // Focus mode toggle
 focusModeToggle.addEventListener('change', toggleFocusMode);
+
+// Delay select
+delaySelect.addEventListener('change', updateDelay);
 
 // Close modal
 closeModal.addEventListener('click', () => {

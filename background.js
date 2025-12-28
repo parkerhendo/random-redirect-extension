@@ -9,7 +9,8 @@ const DEFAULT_SETTINGS = {
   triggerCategories: {},  // { "site.com": "social" }
   destinationCategories: {},  // { "site.com": "learning" }
   snoozedSites: {},  // { "site.com": timestamp }
-  focusMode: false  // when true, ignores all snoozes
+  focusMode: false,  // when true, ignores all snoozes
+  redirectDelay: 0  // max delay in seconds (0 = instant)
 };
 
 // Parse a URL into hostname and path
@@ -185,9 +186,19 @@ chrome.webNavigation.onBeforeNavigate.addListener(async (details) => {
   stats[matchedTrigger] = (stats[matchedTrigger] || 0) + 1;
   chrome.storage.sync.set({ redirectStats: stats });
 
-  // Redirect
+  // Calculate random delay
+  const maxDelay = settings.redirectDelay || 0;
+  const delayMs = maxDelay > 0 ? Math.random() * maxDelay * 1000 : 0;
+
+  // Redirect (with optional delay)
   const destinationUrl = formatDestinationUrl(destination);
-  chrome.tabs.update(details.tabId, { url: destinationUrl });
+  if (delayMs > 0) {
+    setTimeout(() => {
+      chrome.tabs.update(details.tabId, { url: destinationUrl });
+    }, delayMs);
+  } else {
+    chrome.tabs.update(details.tabId, { url: destinationUrl });
+  }
 });
 
 // Clean up snooze if expired (on extension wake)
