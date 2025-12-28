@@ -560,9 +560,11 @@ menuBtn.addEventListener('click', (e) => {
   menuDropdown.classList.toggle('hidden');
 });
 
-// Close menu when clicking outside
-document.addEventListener('click', () => {
-  menuDropdown.classList.add('hidden');
+// Close menu when clicking outside (but not on menu itself)
+document.addEventListener('click', (e) => {
+  if (!menuDropdown.contains(e.target) && e.target !== menuBtn) {
+    menuDropdown.classList.add('hidden');
+  }
 });
 
 // Show schedules modal
